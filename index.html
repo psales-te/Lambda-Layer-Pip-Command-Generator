@@ -33,15 +33,19 @@
       <label for="target" class="form-label">Target Folder</label>
       <div class="mb-2">
         <button type="button" class="btn btn-secondary btn-sm me-2" onclick="setDefaultTarget(1)">Default Layer Target</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="setDefaultTarget(2)">Simple Target (python/)</button>
+        <button type="button" class="btn btn-secondary btn-sm me-2" onclick="setDefaultTarget(2)">Simple Target (python/)</button>
       </div>
       <input type="text" class="form-control" id="target" placeholder="e.g., lambda-layer/python/lib/python3.10/site-packages" />
     </div>
 
     <!-- Option to split commands per package -->
-    <div class="form-check mb-3">
+    <div class="form-check">
       <input class="form-check-input" type="checkbox" id="splitCommands">
       <label class="form-check-label" for="splitCommands">Generate pip command for each package</label>
+    </div>
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="targetFolderByPackage" disabled>
+      <label class="form-check-label" for="targetFolderByPackage">Generate target folder for each package</label>
     </div>
 
     <!-- Generate and Copy buttons -->
@@ -50,28 +54,43 @@
 
     <!-- Output field -->
     <textarea id="output" class="form-control mt-4" rows="6" readonly></textarea>
+
+    <div class="mt-3">
+      <p>After the package download, you must zip the <code>python</code> folder and upload the zip file as your Lambda layer.</p>
+      <p>Read this <a href="https://docs.aws.amazon.com/lambda/latest/dg/python-layers.html" target="_blank">documentation</a> to learn more about creating Lambda layers.</p>
+    </div>
   </div>
 
   <!-- Footer with GitHub link -->
   <footer class="bg-dark text-light text-center py-3 mt-auto">
     <div class="container">
-      <small>View on <a href="https://github.com/psales-te/pip-command-generator-python-lambda-layer" target="_blank" class="text-warning text-decoration-none">GitHub</a></small>
+      <small>View on <a href="https://github.com/psales-te/Lambda-Layer-Pip-Command-Generator" target="_blank" class="text-warning text-decoration-none">GitHub</a></small>
       <br/>
       <small>Made with 🖤</small>
     </div>
   </footer>
 
   <script>
+    let selectedOption = 0;
+
+    // Enable or disable the targetFolderByPackage checkbox depending on splitCommands checkbox state
+    document.getElementById("splitCommands").addEventListener("change", function() {
+      const byPkgCheckbox = document.getElementById("targetFolderByPackage");
+      byPkgCheckbox.disabled = !this.checked;
+    });
+
     // Set default target folder based on button selection
     function setDefaultTarget(option) {
       const version = document.getElementById("pythonVersion").value;
       const targetInput = document.getElementById("target");
 
-      // Option 1: Full path format | Option 2: Simple "python/" folder
       if (option === 1) {
         targetInput.value = `lambda-layer/python/lib/python${version}/site-packages`;
       } else if (option === 2) {
         targetInput.value = "python/";
+      } else if (option === 3) {
+        targetInput.value = "<package_name>/<python_version>/python/";
+        selectedOption = 3;
       }
     }
 
@@ -79,22 +98,24 @@
     function generateCommand() {
       const version = document.getElementById("pythonVersion").value;
       const packageList = document.getElementById("packages").value
-        .split(',') // split by comma
-        .map(pkg => pkg.trim()) // remove extra spaces
-        .filter(pkg => pkg.length > 0); // remove empty strings
+        .split(',')
+        .map(pkg => pkg.trim())
+        .filter(pkg => pkg.length > 0);
       const target = document.getElementById("target").value;
       const split = document.getElementById("splitCommands").checked;
+      const targetByPackage = document.getElementById("targetFolderByPackage").checked;
 
-      // Validation
       if (packageList.length === 0 || !target) {
         document.getElementById("output").value = "Please enter both package names and a target folder.";
         return;
       }
 
       let output = "";
-
-      // Generate single or multiple pip commands based on checkbox
-      if (split) {
+      if (split && targetByPackage) {
+        output = packageList.map(pkg => {
+          return `pip install ${pkg} --platform manylinux2014_x86_64 --target=${pkg}/${version}/${target} --python-version ${version} --only-binary=:all:`;
+        }).join("\n\n");
+      } else if (split) {
         output = packageList.map(pkg => {
           return `pip install ${pkg} --platform manylinux2014_x86_64 --target=${target} --python-version ${version} --only-binary=:all:`;
         }).join("\n\n");
@@ -109,7 +130,7 @@
     function copyOutput() {
       const outputText = document.getElementById("output");
       outputText.select();
-      outputText.setSelectionRange(0, 99999); // ensure mobile support
+      outputText.setSelectionRange(0, 99999);
       document.execCommand("copy");
     }
   </script>
