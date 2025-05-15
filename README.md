@@ -1,6 +1,8 @@
 # Lambda Layer Pip Command Generator
 
-This is a lightweight HTML + JavaScript tool to help you generate pip install commands compatible with AWS Lambda Layer deployment. It allows you to customize the Python version, target folder, and packages, with optional support for generating individual pip commands per package.
+This is a lightweight tool that can help you generate `pip install` commands compatible with AWS Lambda Layer deployment. It allows you to customize the Python version, target folder, and packages, with optional support for generating individual pip commands per package.
+
+The generated `pip install` command contains the basic options to generate the Lambda Layer. Feel free to add more options to this output!
 
 ## Features
 
